@@ -25,13 +25,13 @@ def get_repo():
     return pygit2.Repository(path)
 
 def get_repo_walker(repo):
-    head = repo.lookup_reference('HEAD')
-    head = head.resolve()
-    return repo.walk(head.oid, pygit2.GIT_SORT_TIME)
+    return repo.walk(repo.head.target, pygit2.GIT_SORT_TIME)
 
-def get_formula_tree(commit):
-    tree = commit.tree['Library'].to_object()
-    return tree['Formula'].to_object()
+def get_formula_tree(repo, commit):
+    entry = commit.tree['Library']
+    tree = repo[entry.oid]
+    entry = tree['Formula']
+    return repo[entry.oid]
 
 def main(params):
     check_rev = False if params.revision_count == 0 else True
@@ -42,14 +42,14 @@ def main(params):
     head = set([])
 
     commit = walker.next()
-    for entry in get_formula_tree(commit):
+    for entry in get_formula_tree(repo, commit):
         head.add(entry.hex)
         formula[entry.hex] = entry.name.replace('.rb', '')
 
     cnt = 0
     for commit in walker:
         prev = set([])
-        for entry in get_formula_tree(commit):
+        for entry in get_formula_tree(repo, commit):
             prev.add(entry.hex)
         changes = list(head - prev)
 
