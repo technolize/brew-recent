@@ -5,76 +5,76 @@ import pygit2
 import subprocess
 
 def print_columns(items):
-	width = int(subprocess.check_output(['/bin/stty', 'size']).strip().split(" ")[-1])
-	if width <= 0:
-		width = 80
-	name_length = [len(i) for i in items]
-	name_length.sort()
-	longest = name_length[-1]
-	optimal_col_width = int(width / (longest + 2))
-	cols = optimal_col_width if optimal_col_width > 1 else 1
-	
-	width = "-w{0}".format(width)
-	cols = "-{0}".format(cols)
-	cmd = ['/usr/bin/pr', cols, '-t', width]
-	p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-	p.stdin.write("\n".join(items))
+    width = int(subprocess.check_output(['/bin/stty', 'size']).strip().split(" ")[-1])
+    if width <= 0:
+        width = 80
+    name_length = [len(i) for i in items]
+    name_length.sort()
+    longest = name_length[-1]
+    optimal_col_width = int(width / (longest + 2))
+    cols = optimal_col_width if optimal_col_width > 1 else 1
+
+    width = "-w{0}".format(width)
+    cols = "-{0}".format(cols)
+    cmd = ['/usr/bin/pr', cols, '-t', width]
+    p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+    p.stdin.write("\n".join(items))
 
 def get_repo():
-	path = subprocess.check_output(['brew', '--repository']).strip()
-	return pygit2.Repository(path)
+    path = subprocess.check_output(['brew', '--repository']).strip()
+    return pygit2.Repository(path)
 
 def get_repo_walker(repo):
-	head = repo.lookup_reference('HEAD')
-	head = head.resolve()
-	return repo.walk(head.oid, pygit2.GIT_SORT_TIME)
+    head = repo.lookup_reference('HEAD')
+    head = head.resolve()
+    return repo.walk(head.oid, pygit2.GIT_SORT_TIME)
 
 def get_formula_tree(commit):
-	tree = commit.tree['Library'].to_object()
-	return tree['Formula'].to_object()
+    tree = commit.tree['Library'].to_object()
+    return tree['Formula'].to_object()
 
 def main(params):
-	check_rev = False if params.revision_count == 0 else True
-	repo = get_repo()
-	walker = get_repo_walker(repo)
+    check_rev = False if params.revision_count == 0 else True
+    repo = get_repo()
+    walker = get_repo_walker(repo)
 
-	formula = {}
-	head = set([])
+    formula = {}
+    head = set([])
 
-	commit = walker.next()
-	for entry in get_formula_tree(commit):
-		head.add(entry.hex)
-		formula[entry.hex] = entry.name.replace('.rb', '')
+    commit = walker.next()
+    for entry in get_formula_tree(commit):
+        head.add(entry.hex)
+        formula[entry.hex] = entry.name.replace('.rb', '')
 
-	cnt = 0
-	for commit in walker:
-		prev = set([])
-		for entry in get_formula_tree(commit):
-			prev.add(entry.hex)
-		changes = list(head - prev)
+    cnt = 0
+    for commit in walker:
+        prev = set([])
+        for entry in get_formula_tree(commit):
+            prev.add(entry.hex)
+        changes = list(head - prev)
 
-		if params.only_latest:
-			break
-		cnt += 1
-		if check_rev and cnt > params.revision_count:
-			break
-		if check_rev is False and len(changes) > params.item_count:
-			changes = changes[0:params.item_count]
-			break
+        if params.only_latest:
+            break
+        cnt += 1
+        if check_rev and cnt > params.revision_count:
+            break
+        if check_rev is False and len(changes) > params.item_count:
+            changes = changes[0:params.item_count]
+            break
 
-	changed_formula = []
-	for sha in changes:
-		changed_formula.append(formula[sha])
-	changed_formula.sort()
+    changed_formula = []
+    for sha in changes:
+        changed_formula.append(formula[sha])
+    changed_formula.sort()
 
-	print_columns(changed_formula)
+    print_columns(changed_formula)
 
 if __name__ == '__main__':
-	import argparse
-	parser = argparse.ArgumentParser()
-	parser.add_argument('-c', action="store", dest="item_count", default=20, type=int)
-	parser.add_argument('-r', action="store", dest="revision_count", default=0, type=int)
-	parser.add_argument('--latest', action='store_true', default=False, dest='only_latest')
-	args = parser.parse_args()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', action="store", dest="item_count", default=20, type=int)
+    parser.add_argument('-r', action="store", dest="revision_count", default=0, type=int)
+    parser.add_argument('--latest', action='store_true', default=False, dest='only_latest')
+    args = parser.parse_args()
 
-	main(args)
+    main(args)
